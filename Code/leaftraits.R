@@ -17,7 +17,7 @@ library(car)
 library(MASS)
 library(glmmTMB)
 library(DHARMa)
-library(brms)
+library(PNWColors)
 
 ####00. READ, CLEAN, TRANSFORM DATA####
 data <- read.csv("Raw Data/final_data.csv", strip.white = TRUE)
@@ -39,18 +39,20 @@ data <- data %>% mutate(rel.soil.moisture = avg.soil.moisture - ref.soil.moistur
 data <- data %>% mutate(percent.N = ((0.001*total.n.ug)/sample.weight.mg)*100) %>% 
   mutate(C.N.ratio = total.c.ug/total.n.ug)
 
-# standardize (center and scale by standard deviation) all continuous predictors
-
-data$salmon.density.scaled <- scale(data$salmon.density, center = TRUE, scale = TRUE)
-data$chum.density.scaled <- scale(data$chum.density, center = TRUE, scale = TRUE)
-data$pink.density.scaled <- scale(data$pink.density, center = TRUE, scale = TRUE)
-data$dist.upstream.scaled <- scale(data$dist.upstream, center = TRUE, scale = TRUE)
-data$dist.from.stream.scaled <- scale(data$dist.from.stream, center = TRUE, scale = TRUE)
-data$slope.scaled <- scale(data$slope, center = TRUE, scale = TRUE)
-data$northness.scaled <- scale(data$northness, center = TRUE, scale = TRUE)
-data$eastness.scaled <- scale(data$eastness, center = TRUE, scale = TRUE)
-data$avg.canopy.cover.scaled <- scale(data$avg.canopy.cover, center = TRUE, scale = TRUE)
-data$rel.soil.moisture.scaled <- scale(data$rel.soil.moisture, center = TRUE, scale = TRUE)
+#standardize (center and scale by standard deviation) all continuous predictors;
+#the scale function centers and scales by default, and the c() on each scale()
+#function removes additional attributes created by the scale function that may
+#cause issues with other packages
+data$salmon.density.scaled <- c(scale(data$salmon.density))
+data$chum.density.scaled <- c(scale(data$chum.density))
+data$pink.density.scaled <- c(scale(data$pink.density))
+data$dist.upstream.scaled <- c(scale(data$dist.upstream))
+data$dist.from.stream.scaled <- c(scale(data$dist.from.stream))
+data$slope.scaled <- c(scale(data$slope))
+data$northness.scaled <- c(scale(data$northness))
+data$eastness.scaled <- c(scale(data$eastness))
+data$avg.canopy.cover.scaled <- c(scale(data$avg.canopy.cover))
+data$rel.soil.moisture.scaled <- c(scale(data$rel.soil.moisture))
 
 #remove 5 streams that are a part of another study
 data <- data %>% dplyr::filter(stream %in% c("Beales","Bullock Main","Clatse","Fancy",
@@ -58,13 +60,30 @@ data <- data %>% dplyr::filter(stream %in% c("Beales","Bullock Main","Clatse","F
 "Quartcha","Sagar"))
 
 ####01. NITROGEN ISOTOPE MODELLING####
-isotope_mod <- glmmTMB(n.15 ~ salmon.density.scaled*species + I(salmon.density.scaled^2) + dist.upstream.scaled +
-                         dist.from.stream.scaled + northness.scaled + eastness.scaled +
-                         avg.canopy.cover.scaled + rel.soil.moisture.scaled
+isotope_mod <- glmmTMB(n.15 ~ species * log(salmon.density.scaled + 1)
+                         + dist.upstream.scaled +
+                         dist.from.stream.scaled #+ northness.scaled + eastness.scaled +
+                        + rel.soil.moisture.scaled + avg.canopy.cover.scaled 
+                        + slope +
                    + (1|stream/quadrat.id),
                    family = gaussian(), #ziformula = ~0,
-                   #dispformula = ~salmon.density.scaled,
+                   #dispformula = ~dist.upstream.scaled,
                    data = data, na.action = "na.omit")
+
+pal <- pnw_palette("Cascades", 5)
+ggplot(data, aes(fill = species, y = n.15,  x = salmon.density.scaled)) + 
+  geom_point() +
+  geom_smooth() +
+  scale_fill_manual(values = pal) +
+  theme_classic(30) +
+  theme(axis.ticks = element_blank(),
+        panel.border = element_rect(colour = "black", size = 1, fill = NA),
+        #panel.spacing.x = unit(0.3,"line"),
+        #panel.spacing.y = unit(0.3,"line"),
+        strip.background = element_rect(colour = "white",size = 1, fill = NA),
+        line = element_line(size = 0.25),
+        strip.text.y.right = element_text(angle = 0)) +
+  labs(x = "Salmon Density", y = "nitrogen-15")
 
 #check variance inflation factors for collinearity among predictors
 performance::check_collinearity(isotope_mod)
@@ -74,7 +93,7 @@ res <- simulateResiduals(isotope_mod, n = 1000)
 plot(res)
 
 #Check Individual Predictors
-data2 <- tidyr::drop_na(data, n.15)
+data2 <- tidyr::drop_na(data)
 plotResiduals(res$scaledResiduals, data2$salmon.density.scaled)
 plotResiduals(res$scaledResiduals, data2$species)
 plotResiduals(res$scaledResiduals, data2$dist.upstream.scaled)
@@ -98,26 +117,23 @@ testOutliers(simulationOutput = res) ## outliers likely due to sample size
 testDispersion(res) # No over/underdispersion 
 #(Small p-value (<0.05) indicates dispersion problem)
 
-# Check zero inflation
-testZeroInflation(res)
-
 #once model assumptions and fit have been checked, assess the model outputs
 summary(isotope_mod)
 
 ####02. %N and C:N MODELLING####
 
-percent_n_mod <- glmmTMB(percent.N ~ salmon.density.scaled * species + dist.upstream.scaled +
+percent_n_mod <- glmmTMB(percent.N ~ salmon.density.scaled + 1 * species + dist.upstream.scaled +
                          dist.from.stream.scaled + northness.scaled + eastness.scaled +
                          avg.canopy.cover.scaled + rel.soil.moisture.scaled
                        + (1|stream/quadrat.id),
                        family = gaussian(), #ziformula = ~0,
                        #dispformula = ~1,
                        data = data, na.action = "na.omit")
-summary(percent_n_mod)
 res <- simulateResiduals(percent_n_mod)
 plot(res)
+summary(percent_n_mod)
 
-c_n_mod <- glmmTMB(C.N.ratio ~ salmon.density.scaled * species + dist.upstream.scaled +
+c_n_mod <- glmmTMB(C.N.ratio ~ log(salmon.density) * species + dist.upstream.scaled +
                            dist.from.stream.scaled + northness.scaled + eastness.scaled +
                            avg.canopy.cover.scaled + rel.soil.moisture.scaled
                          + (1|stream/quadrat.id),
@@ -130,7 +146,7 @@ plot(res)
 
 ####03. LEAF MASS PER AREA MODELLING####
 
-mass_mod <- glmmTMB(punch.weight.mg ~ salmon.density.scaled * species + dist.upstream.scaled +
+mass_mod <- glmmTMB(punch.weight.mg ~ log(salmon.density) * species + dist.upstream.scaled +
                          dist.from.stream.scaled + northness.scaled + eastness.scaled +
                          avg.canopy.cover.scaled + rel.soil.moisture.scaled
                        + (1|stream/quadrat.id),
@@ -143,7 +159,7 @@ plot(res)
 
 ####04. LEAF AREA MODELLING####
 
-area_mod <- glmmTMB(leaf.area ~ salmon.density.scaled * species + dist.upstream.scaled +
+area_mod <- glmmTMB(leaf.area ~ log(salmon.density) * species + dist.upstream.scaled +
                          dist.from.stream.scaled + northness.scaled + eastness.scaled +
                          avg.canopy.cover.scaled + rel.soil.moisture.scaled
                        + (1|stream/quadrat.id),
@@ -156,7 +172,7 @@ plot(res)
 
 ####05. LEAF GREENNESS MODELLING####
 
-greenness_mod <- glmmTMB(percent.green ~ salmon.density.scaled * species + dist.upstream.scaled +
+greenness_mod <- glmmTMB(percent.green ~ log(salmon.density) * species + dist.upstream.scaled +
                          dist.from.stream.scaled + northness.scaled + eastness.scaled +
                          avg.canopy.cover.scaled + rel.soil.moisture.scaled
                        + (1|stream/quadrat.id),
