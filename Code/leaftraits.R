@@ -24,6 +24,7 @@ library(MASS)
 library(glmmTMB)
 library(DHARMa)
 library(PNWColors)
+library(ggeffects)
 
 ####00. READ, CLEAN, TRANSFORM DATA####
 set.seed(1)
@@ -77,7 +78,9 @@ data <- data %>% dplyr::filter(stream %in% c("Beales", "Bullock Main", "Clatse",
                                              "Sagar"))
 
 ####01. NITROGEN ISOTOPE MODELLING####
-isotope_mod <- glmmTMB(n.15 ~ species + log.salmon.density.scaled +
+hist(data$n.15, breaks = 100) #use normal distribution
+
+isotope_mod <- glmmTMB(n.15 ~ species * log.salmon.density.scaled +
                          dist.upstream.scaled +
                          dist.from.stream.scaled + 
                          #northness.scaled + 
@@ -86,7 +89,8 @@ isotope_mod <- glmmTMB(n.15 ~ species + log.salmon.density.scaled +
                          avg.canopy.cover.scaled +
                          slope.scaled
                          + (1|stream/quadrat.id),
-                       dispformula = ~ log.salmon.density.scaled,
+                       dispformula = ~ log.salmon.density.scaled +
+                         dist.upstream.scaled,
                        family = gaussian(),
                        data = data, na.action = "na.omit")
 
@@ -99,7 +103,7 @@ plot(res)
 
 #Check Individual Predictors
 data_na <- data %>% tidyr::drop_na(n.15) 
-data_na$species <- as.character(data_na$species)
+data_na$species <- as.character(data_na$species) #changed to enable visualization
 plotResiduals(res$scaledResiduals, data_na$log.salmon.density.scaled)
 plotResiduals(res$scaledResiduals, data_na$species)
 plotResiduals(res$scaledResiduals, data_na$dist.upstream.scaled)
@@ -120,76 +124,250 @@ testDispersion(res) # No over/underdispersion
 summary(isotope_mod, robust = TRUE)
 performance::r2(isotope_mod)
 
-####02. %N and C:N MODELLING####
+####02. %N MODELLING####
+hist(data$percent.N, breaks = 100) #use normal distribution
 
-percent_n_mod <- glmmTMB(percent.N ~ log(salmon.density.scaled + 1) * species + dist.upstream.scaled +
-                         dist.from.stream.scaled + northness.scaled + eastness.scaled +
-                         avg.canopy.cover.scaled + rel.soil.moisture.scaled
+percent_mod <- glmmTMB(percent.N ~ species * log.salmon.density.scaled +
+                         dist.upstream.scaled +
+                         dist.from.stream.scaled + 
+                         #northness.scaled + 
+                         #eastness.scaled +
+                         rel.soil.moisture.scaled + 
+                         avg.canopy.cover.scaled +
+                         slope.scaled
                        + (1|stream/quadrat.id),
-                       family = gaussian(), #ziformula = ~0,
-                       #dispformula = ~1,
+                        dispformula = ~ log.salmon.density.scaled +
+                         species + rel.soil.moisture.scaled + slope.scaled,
+                       family = gaussian(),
                        data = data, na.action = "na.omit")
-res <- simulateResiduals(percent_n_mod)
-plot(res)
-summary(percent_n_mod)
 
-summary(c_n_mod)
-res <- simulateResiduals(c_n_mod)
+#check variance inflation factors for collinearity among predictors
+performance::check_collinearity(percent_mod)
+
+#check residuals and test model assumptions using the DHARMa package
+res <- simulateResiduals(percent_mod, n = 1000)
 plot(res)
+
+#Check Individual Predictors
+data_na <- data %>% tidyr::drop_na(percent.N) 
+data_na$species <- as.character(data_na$species)
+plotResiduals(res$scaledResiduals, data_na$log.salmon.density.scaled)
+plotResiduals(res$scaledResiduals, data_na$species)
+plotResiduals(res$scaledResiduals, data_na$dist.upstream.scaled)
+plotResiduals(res$scaledResiduals, data_na$dist.from.stream.scaled)
+plotResiduals(res$scaledResiduals, data_na$rel.soil.moisture.scaled)
+plotResiduals(res$scaledResiduals, data_na$avg.canopy.cover.scaled)
+plotResiduals(res$scaledResiduals, data_na$slope.scaled)
+
+#Check for outliers
+testOutliers(simulationOutput = res) #limited number of outliers; 
+#likely due to sample size (F. Hartig, DHARMa vignette); will not remove any 
+#simply to improve fit
+
+#Check Dispersion
+testDispersion(res) # No over/underdispersion 
+
+#once model assumptions and fit have been checked, assess the model outputs
+summary(percent_mod, robust = TRUE)
+performance::r2(percent_mod)
 
 ####03. LEAF MASS PER AREA MODELLING####
+hist(data$punch.weight.mg, breaks = 100) #use gamma distribution
 
-mass_mod <- glmmTMB(punch.weight.mg ~ log(salmon.density) * species + dist.upstream.scaled +
-                         dist.from.stream.scaled + northness.scaled + eastness.scaled +
-                         avg.canopy.cover.scaled + rel.soil.moisture.scaled
+mass_mod <- glmmTMB(punch.weight.mg ~ species * log.salmon.density.scaled +
+                         dist.upstream.scaled +
+                         dist.from.stream.scaled + 
+                         #northness.scaled + 
+                         #eastness.scaled +
+                         rel.soil.moisture.scaled + 
+                         avg.canopy.cover.scaled +
+                         slope.scaled
                        + (1|stream/quadrat.id),
-                       family = gaussian(), #ziformula = ~0,
-                       #dispformula = ~1,
+                       dispformula = ~ log.salmon.density.scaled +
+                         species + avg.canopy.cover.scaled,
+                       family = Gamma(link = "log"),
                        data = data, na.action = "na.omit")
-summary(mass_mod)
-res <- simulateResiduals(mass_mod)
+
+#check variance inflation factors for collinearity among predictors
+performance::check_collinearity(mass_mod)
+
+#check residuals and test model assumptions using the DHARMa package
+res <- simulateResiduals(mass_mod, n = 1000)
 plot(res)
+
+#Check Individual Predictors
+data_na <- data %>% tidyr::drop_na(punch.weight.mg) 
+data_na$species <- as.character(data_na$species)
+plotResiduals(res$scaledResiduals, data_na$log.salmon.density.scaled)
+plotResiduals(res$scaledResiduals, data_na$species)
+plotResiduals(res$scaledResiduals, data_na$dist.upstream.scaled)
+plotResiduals(res$scaledResiduals, data_na$dist.from.stream.scaled)
+plotResiduals(res$scaledResiduals, data_na$rel.soil.moisture.scaled)
+plotResiduals(res$scaledResiduals, data_na$avg.canopy.cover.scaled)
+plotResiduals(res$scaledResiduals, data_na$slope.scaled)
+
+#Check for outliers
+testOutliers(simulationOutput = res) #limited number of outliers; 
+#likely due to sample size (F. Hartig, DHARMa vignette); will not remove any 
+#simply to improve fit
+
+#Check Dispersion
+testDispersion(res) # No over/underdispersion 
+
+#once model assumptions and fit have been checked, assess the model outputs
+summary(mass_mod, robust = TRUE)
+performance::r2(mass_mod)
 
 ####04. LEAF AREA MODELLING####
+hist(data$leaf.area, breaks = 100) #use gamma distribution
 
-area_mod <- glmmTMB(leaf.area ~ log(salmon.density) * species + dist.upstream.scaled +
-                         dist.from.stream.scaled + northness.scaled + eastness.scaled +
-                         avg.canopy.cover.scaled + rel.soil.moisture.scaled
-                       + (1|stream/quadrat.id),
-                       family = gaussian(), #ziformula = ~0,
-                       #dispformula = ~1,
-                       data = data, na.action = "na.omit")
-summary(area_mod)
-res <- simulateResiduals(area_mod)
+area_mod <- glmmTMB(leaf.area ~ species * log.salmon.density.scaled +
+                      dist.upstream.scaled +
+                      dist.from.stream.scaled + 
+                      #northness.scaled + 
+                      #eastness.scaled +
+                      rel.soil.moisture.scaled + 
+                      avg.canopy.cover.scaled +
+                      slope.scaled
+                    + (1|stream/quadrat.id),
+                    dispformula = ~ log.salmon.density.scaled +
+                      species,
+                    family = Gamma(link = "log"),
+                    data = data, na.action = "na.omit")
+
+#check variance inflation factors for collinearity among predictors
+performance::check_collinearity(area_mod)
+
+#check residuals and test model assumptions using the DHARMa package
+res <- simulateResiduals(area_mod, n = 1000)
 plot(res)
+
+#Check Individual Predictors
+data_na <- data %>% tidyr::drop_na(leaf.area) 
+data_na$species <- as.character(data_na$species)
+plotResiduals(res$scaledResiduals, data_na$log.salmon.density.scaled)
+plotResiduals(res$scaledResiduals, data_na$species)
+plotResiduals(res$scaledResiduals, data_na$dist.upstream.scaled)
+plotResiduals(res$scaledResiduals, data_na$dist.from.stream.scaled)
+plotResiduals(res$scaledResiduals, data_na$rel.soil.moisture.scaled)
+plotResiduals(res$scaledResiduals, data_na$avg.canopy.cover.scaled)
+plotResiduals(res$scaledResiduals, data_na$slope.scaled)
+
+#Check for outliers
+testOutliers(simulationOutput = res) #limited number of outliers; 
+#likely due to sample size (F. Hartig, DHARMa vignette); will not remove any 
+#simply to improve fit
+
+#Check Dispersion
+testDispersion(res) # No over/underdispersion 
+
+#once model assumptions and fit have been checked, assess the model outputs
+summary(area_mod, robust = TRUE)
+performance::r2(area_mod)
 
 ####05. LEAF GREENNESS MODELLING####
+hist(data$percent.green, breaks = 100) #use normal distribution
 
-greenness_mod <- glmmTMB(percent.green ~ log(salmon.density) * species + dist.upstream.scaled +
-                         dist.from.stream.scaled + northness.scaled + eastness.scaled +
-                         avg.canopy.cover.scaled + rel.soil.moisture.scaled
-                       + (1|stream/quadrat.id),
-                       family = gaussian(), #ziformula = ~0,
-                       #dispformula = ~1,
-                       data = data, na.action = "na.omit")
-summary(greenness_mod)
-res <- simulateResiduals(greenness_mod)
+green_mod <- glmmTMB(percent.green ~ species * log.salmon.density.scaled +
+                      dist.upstream.scaled +
+                      dist.from.stream.scaled + 
+                      #northness.scaled + 
+                      #eastness.scaled +
+                      rel.soil.moisture.scaled + 
+                      avg.canopy.cover.scaled +
+                      slope.scaled
+                    + (1|stream/quadrat.id),
+                    dispformula = ~ log.salmon.density.scaled +
+                      species,
+                    family = gaussian,
+                    data = data, na.action = "na.omit")
+
+#check variance inflation factors for collinearity among predictors
+performance::check_collinearity(green_mod)
+
+#check residuals and test model assumptions using the DHARMa package
+res <- simulateResiduals(green_mod, n = 1000)
 plot(res)
+
+#Check Individual Predictors
+data_na <- data %>% tidyr::drop_na(percent.green) 
+data_na$species <- as.character(data_na$species)
+plotResiduals(res$scaledResiduals, data_na$log.salmon.density.scaled)
+plotResiduals(res$scaledResiduals, data_na$species)
+plotResiduals(res$scaledResiduals, data_na$dist.upstream.scaled)
+plotResiduals(res$scaledResiduals, data_na$dist.from.stream.scaled)
+plotResiduals(res$scaledResiduals, data_na$rel.soil.moisture.scaled)
+plotResiduals(res$scaledResiduals, data_na$avg.canopy.cover.scaled)
+plotResiduals(res$scaledResiduals, data_na$slope.scaled)
+
+#Check for outliers
+testOutliers(simulationOutput = res) #limited number of outliers; 
+#likely due to sample size (F. Hartig, DHARMa vignette); will not remove any 
+#simply to improve fit
+
+#Check Dispersion
+testDispersion(res) # No over/underdispersion 
+
+#once model assumptions and fit have been checked, assess the model outputs
+summary(green_mod, robust = TRUE)
+performance::r2(green_mod)
 
 ####06. FIGURES####
 
-#create a custom colour palette
-pal <- pnw_palette("Cascades", 5)
+#nitrogen-15 figure
 
-ggplot(data, aes(fill = species, y = n.15,  x = percent.N)) + 
-  geom_point() +
-  geom_smooth() +
+#create model predictions
+predict_n.15 <- ggpredict(isotope_mod, terms = c("log.salmon.density.scaled[n=100]",
+                                              "species")) %>% 
+  #rename columns to column names in original data
+  rename(log.salmon.density.scaled = x,
+         species = group) %>% 
+  mutate(log.salmon.density = 
+           log.salmon.density.scaled*sd(data$log.salmon.density)+
+           mean(data$log.salmon.density)) %>% 
+  #limit predictions to the observed values rather than extrapolating
+  filter((species == 'RUSP' & 
+            (log.salmon.density.scaled >= 
+               min(filter(data, species == 'RUSP')$log.salmon.density.scaled) & 
+               log.salmon.density.scaled <= 
+            max(filter(data, species == 'RUSP')$log.salmon.density.scaled))) |
+         (species == 'MADI' & 
+            (log.salmon.density.scaled >= 
+               min(filter(data, species == 'MADI')$log.salmon.density.scaled) & 
+               log.salmon.density.scaled <= 
+            max(filter(data, species == 'MADI')$log.salmon.density.scaled))) |
+         (species == 'VASP' & 
+            (log.salmon.density.scaled >= 
+               min(filter(data, species == 'VASP')$log.salmon.density.scaled) & 
+               log.salmon.density.scaled <= 
+            max(filter(data, species == 'VASP')$log.salmon.density.scaled))) |
+         (species == 'MEFE' & 
+            (log.salmon.density.scaled >= 
+                min(filter(data, species == 'MEFE')$log.salmon.density.scaled) & 
+                log.salmon.density.scaled <= 
+            max(filter(data, species == 'MEFE')$log.salmon.density.scaled))) |
+         (species == 'TITR' & 
+            (log.salmon.density.scaled >= 
+                min(filter(data, species == 'TITR')$log.salmon.density.scaled) & 
+                log.salmon.density.scaled <= 
+            max(filter(data, species == 'TITR')$log.salmon.density.scaled))))
+
+#create a custom colour palette
+  pal <- pnw_palette("Cascades", 5)
+  
+  #plot the raw data with model predictions on top
+ggplot(data, aes(x = log.salmon.density, y = n.15, fill = species)) +
+  geom_point(aes(colour = species)) +
+  geom_ribbon(data = predict_n.15,
+              aes(y = predicted, ymin = conf.low, ymax = conf.high,
+                  fill = species), 
+              alpha = 0.2) +
+  geom_line(data = predict_n.15,
+            aes(y = predicted, colour = species)) +
+  scale_color_manual(values = pal) +
   scale_fill_manual(values = pal) +
-  theme_classic(30) +
-  theme(panel.border = element_rect(colour = "black", size = 1, fill = NA),
-        #panel.spacing.x = unit(0.3,"line"),
-        #panel.spacing.y = unit(0.3,"line"),
-        strip.background = element_rect(colour = "white",size = 1, fill = NA),
-        line = element_line(size = 0.25),
-        strip.text.y.right = element_text(angle = 0)) +
-  labs(x = "Salmon Density", y = "nitrogen-15")
+  labs(x = "log(Salmon Density)", y = "Nitrogen-15", fill = "Species") +
+  theme_classic(30) 
+
+
+
