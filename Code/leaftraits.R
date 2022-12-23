@@ -34,6 +34,9 @@ data$species <- as.factor(data$species)
 data$stream <- as.factor(data$stream)
 data$quadrat.id <- as.factor(data$quadrat.id)
 
+levels(data$species)
+data$species = factor(data$species,levels(data$species)[c(1,3,2,5,4)])
+
 #calculate "northness" and "eastness" from aspect data, as data are circular;
 #sin() and cos() functions operate with radians, so we must convert aspect from
 #degrees to radians and then apply the trigonometric transformations
@@ -314,10 +317,11 @@ performance::r2(green_mod)
 
 ####06. FIGURES####
 
-#nitrogen-15 figure
+#Nitrogen-15 Figure----
 
-#create model predictions
-predict_n.15 <- ggpredict(isotope_mod, terms = c("log.salmon.density.scaled[n=100]",
+#create model predictions using heteroscedasticity-consistent standard errors
+predict_n.15 <- ggpredict(isotope_mod, vcov.fun = "vcovHC", vcov.type = "HC0",
+                          terms = c("log.salmon.density.scaled[n=100]",
                                               "species")) %>% 
   #rename columns to column names in original data
   rename(log.salmon.density.scaled = x,
@@ -345,29 +349,290 @@ predict_n.15 <- ggpredict(isotope_mod, terms = c("log.salmon.density.scaled[n=10
             (log.salmon.density.scaled >= 
                 min(filter(data, species == 'MEFE')$log.salmon.density.scaled) & 
                 log.salmon.density.scaled <= 
-            max(filter(data, species == 'MEFE')$log.salmon.density.scaled))) |
-         (species == 'TITR' & 
-            (log.salmon.density.scaled >= 
-                min(filter(data, species == 'TITR')$log.salmon.density.scaled) & 
-                log.salmon.density.scaled <= 
-            max(filter(data, species == 'TITR')$log.salmon.density.scaled))))
+            max(filter(data, species == 'MEFE')$log.salmon.density.scaled))))
 
 #create a custom colour palette
   pal <- pnw_palette("Cascades", 5)
   
-  #plot the raw data with model predictions on top
-ggplot(data, aes(x = log.salmon.density, y = n.15, fill = species)) +
+#plot the raw data with model predictions on top
+data_noTITR <- data %>% filter(species != "TITR") #remove species w/o data
+  
+ggplot(data_noTITR, aes(x = log.salmon.density, y = n.15)) +
+geom_point(aes(colour = species)) +
+geom_ribbon(data = predict_n.15,
+            aes(y = predicted, ymin = conf.low, ymax = conf.high,
+                fill = species), 
+            alpha = 0.2) +
+geom_line(data = predict_n.15,
+          aes(y = predicted, colour = species)) +
+scale_color_manual(values = pal, labels = c("False Lily","Salmonberry",
+                                            "False Azalea", "Blueberry"),
+                   name = "") +
+scale_fill_manual(values = pal, labels = c("False Lily","Salmonberry",
+                                           "False Azalea", "Blueberry"),
+                  name = "") +
+labs(x = "log(Salmon Density)", y = expression(paste(~delta~Nitrogen-15))) +
+theme_classic(30) +
+facet_wrap(~species, scales = "fixed") +
+theme(strip.text = element_blank(), axis.line = element_line(size = 0.25)) +
+annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
+annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
+
+#Percent Nitrogen Figure----
+  
+#create model predictions using heteroscedasticity-consistent standard errors
+predict_percent <- ggpredict(percent_mod, vcov.fun = "vcovHC", vcov.type = "HC0",
+                             terms = c("log.salmon.density.scaled[n=100]",
+                                                   "species")) %>% 
+  #rename columns to column names in original data
+  rename(log.salmon.density.scaled = x,
+         species = group) %>% 
+  mutate(log.salmon.density = 
+           log.salmon.density.scaled*sd(data$log.salmon.density)+
+           mean(data$log.salmon.density)) %>% 
+  #limit predictions to the observed values rather than extrapolating
+  filter((species == 'RUSP' & 
+            (log.salmon.density.scaled >= 
+               min(filter(data, species == 'RUSP')$log.salmon.density.scaled) & 
+               log.salmon.density.scaled <= 
+               max(filter(data, species == 'RUSP')$log.salmon.density.scaled))) |
+           (species == 'MADI' & 
+              (log.salmon.density.scaled >= 
+                 min(filter(data, species == 'MADI')$log.salmon.density.scaled) & 
+                 log.salmon.density.scaled <= 
+                 max(filter(data, species == 'MADI')$log.salmon.density.scaled))) |
+           (species == 'VASP' & 
+              (log.salmon.density.scaled >= 
+                 min(filter(data, species == 'VASP')$log.salmon.density.scaled) & 
+                 log.salmon.density.scaled <= 
+                 max(filter(data, species == 'VASP')$log.salmon.density.scaled))) |
+           (species == 'MEFE' & 
+              (log.salmon.density.scaled >= 
+                 min(filter(data, species == 'MEFE')$log.salmon.density.scaled) & 
+                 log.salmon.density.scaled <= 
+                 max(filter(data, species == 'MEFE')$log.salmon.density.scaled))))
+
+#create a custom colour palette
+pal <- pnw_palette("Cascades", 5)
+
+#plot the raw data with model predictions on top
+data_noTITR <- data %>% filter(species != "TITR") #remove species w/o data
+
+ggplot(data_noTITR, aes(x = log.salmon.density, y = percent.N)) +
   geom_point(aes(colour = species)) +
-  geom_ribbon(data = predict_n.15,
+  geom_ribbon(data = predict_percent,
               aes(y = predicted, ymin = conf.low, ymax = conf.high,
                   fill = species), 
               alpha = 0.2) +
-  geom_line(data = predict_n.15,
+  geom_line(data = predict_percent,
             aes(y = predicted, colour = species)) +
-  scale_color_manual(values = pal) +
-  scale_fill_manual(values = pal) +
-  labs(x = "log(Salmon Density)", y = "Nitrogen-15", fill = "Species") +
-  theme_classic(30) 
+  scale_color_manual(values = pal, labels = c("False Lily","Salmonberry",
+                                              "False Azalea", "Blueberry"),
+                     name = "") +
+  scale_fill_manual(values = pal, labels = c("False Lily","Salmonberry",
+                                             "False Azalea", "Blueberry"),
+                    name = "") +
+  labs(x = "log(Salmon Density)", y = "% Nitrogen") +
+  theme_classic(30) +
+  facet_wrap(~species, scales = "fixed") +
+  theme(strip.text = element_blank(), axis.line = element_line(size = 0.25)) +
+  annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
+  annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
 
+#Leaf Mass Figure----
 
+#create model predictions using heteroscedasticity consistent standard errors
+predict_mass <- ggpredict(mass_mod, vcov.fun = "vcovHC", vcov.type = "HC0",
+                             terms = c("log.salmon.density.scaled[n=100]",
+                                       "species")) %>% 
+  #rename columns to column names in original data
+  rename(log.salmon.density.scaled = x,
+         species = group) %>% 
+  mutate(log.salmon.density = 
+           log.salmon.density.scaled*sd(data$log.salmon.density)+
+           mean(data$log.salmon.density)) %>% 
+  #limit predictions to the observed values rather than extrapolating
+  filter((species == 'RUSP' & 
+            (log.salmon.density.scaled >= 
+               min(filter(data, species == 'RUSP')$log.salmon.density.scaled) & 
+               log.salmon.density.scaled <= 
+               max(filter(data, species == 'RUSP')$log.salmon.density.scaled))) |
+           (species == 'MADI' & 
+              (log.salmon.density.scaled >= 
+                 min(filter(data, species == 'MADI')$log.salmon.density.scaled) & 
+                 log.salmon.density.scaled <= 
+                 max(filter(data, species == 'MADI')$log.salmon.density.scaled))) |
+           (species == 'VASP' & 
+              (log.salmon.density.scaled >= 
+                 min(filter(data, species == 'VASP')$log.salmon.density.scaled) & 
+                 log.salmon.density.scaled <= 
+                 max(filter(data, species == 'VASP')$log.salmon.density.scaled))) |
+           (species == 'MEFE' & 
+              (log.salmon.density.scaled >= 
+                 min(filter(data, species == 'MEFE')$log.salmon.density.scaled) & 
+                 log.salmon.density.scaled <= 
+                 max(filter(data, species == 'MEFE')$log.salmon.density.scaled))) |
+           (species == 'TITR' & 
+               (log.salmon.density.scaled >= 
+                  min(filter(data, species == 'TITR')$log.salmon.density.scaled) & 
+                  log.salmon.density.scaled <= 
+                  max(filter(data, species == 'TITR')$log.salmon.density.scaled))))
 
+#create a custom colour palette
+pal <- pnw_palette("Cascades", 5)
+
+#plot the raw data with model predictions on top
+ggplot(data, aes(x = log.salmon.density, y = punch.weight.mg)) +
+  geom_point(aes(colour = species)) +
+  geom_ribbon(data = predict_mass,
+              aes(y = predicted, ymin = conf.low, ymax = conf.high,
+                  fill = species), 
+              alpha = 0.2) +
+  geom_line(data = predict_mass,
+            aes(y = predicted, colour = species)) +
+  scale_color_manual(values = pal, labels = c("False Lily","Salmonberry",
+                                              "False Azalea", "Blueberry",
+                                              "Foamflower"),
+                     name = "") +
+  scale_fill_manual(values = pal, labels = c("False Lily","Salmonberry",
+                                             "False Azalea", "Blueberry",
+                                             "Foamflower"),
+                    name = "") +
+  labs(x = "log(Salmon Density)", y = "Leaf Mass per Area") +
+  theme_classic(30) +
+  facet_wrap(~species, scales = "fixed") +
+  theme(strip.text = element_blank(), axis.line = element_line(size = 0.25)) +
+  annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
+  annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
+
+#Leaf Area Figure----
+
+#create model predictions using heteroscedasticity consistent standard errors
+predict_area <- ggpredict(area_mod, vcov.fun = "vcovHC", vcov.type = "HC0",
+                             terms = c("log.salmon.density.scaled[n=100]",
+                                       "species")) %>% 
+  #rename columns to column names in original data
+  rename(log.salmon.density.scaled = x,
+         species = group) %>% 
+  mutate(log.salmon.density = 
+           log.salmon.density.scaled*sd(data$log.salmon.density)+
+           mean(data$log.salmon.density)) %>% 
+  #limit predictions to the observed values rather than extrapolating
+  filter((species == 'RUSP' & 
+            (log.salmon.density.scaled >= 
+               min(filter(data, species == 'RUSP')$log.salmon.density.scaled) & 
+               log.salmon.density.scaled <= 
+               max(filter(data, species == 'RUSP')$log.salmon.density.scaled))) |
+           (species == 'MADI' & 
+              (log.salmon.density.scaled >= 
+                 min(filter(data, species == 'MADI')$log.salmon.density.scaled) & 
+                 log.salmon.density.scaled <= 
+                 max(filter(data, species == 'MADI')$log.salmon.density.scaled))) |
+           (species == 'VASP' & 
+              (log.salmon.density.scaled >= 
+                 min(filter(data, species == 'VASP')$log.salmon.density.scaled) & 
+                 log.salmon.density.scaled <= 
+                 max(filter(data, species == 'VASP')$log.salmon.density.scaled))) |
+           (species == 'MEFE' & 
+              (log.salmon.density.scaled >= 
+                 min(filter(data, species == 'MEFE')$log.salmon.density.scaled) & 
+                 log.salmon.density.scaled <= 
+                 max(filter(data, species == 'MEFE')$log.salmon.density.scaled))) |
+           (species == 'TITR' & 
+              (log.salmon.density.scaled >= 
+                 min(filter(data, species == 'TITR')$log.salmon.density.scaled) & 
+                 log.salmon.density.scaled <= 
+                 max(filter(data, species == 'TITR')$log.salmon.density.scaled))))
+
+#create a custom colour palette
+pal <- pnw_palette("Cascades", 5)
+
+#plot the raw data with model predictions on top
+ggplot(data, aes(x = log.salmon.density, y = leaf.area)) +
+  geom_point(aes(colour = species)) +
+  geom_ribbon(data = predict_area,
+              aes(y = predicted, ymin = conf.low, ymax = conf.high,
+                  fill = species), 
+              alpha = 0.2) +
+  geom_line(data = predict_area,
+            aes(y = predicted, colour = species)) +
+  scale_color_manual(values = pal, labels = c("False Lily","Salmonberry",
+                                              "False Azalea", "Blueberry",
+                                              "Foamflower"),
+                     name = "") +
+  scale_fill_manual(values = pal, labels = c("False Lily","Salmonberry",
+                                             "False Azalea", "Blueberry",
+                                             "Foamflower"),
+                    name = "") +
+  labs(x = "log(Salmon Density)", y = "Leaf Area") +
+  theme_classic(30) +
+  facet_wrap(~species, scales = "free_y") +
+  theme(strip.text = element_blank(), axis.line = element_line(size = 1)) +
+  annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
+  annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
+
+#Leaf Greenness Figure----
+
+#create model predictions using heteroscedasticity consistent standard errors
+predict_green <- ggpredict(green_mod, vcov.fun = "vcovHC", vcov.type = "HC0",
+                             terms = c("log.salmon.density.scaled[n=100]",
+                                       "species")) %>% 
+  #rename columns to column names in original data
+  rename(log.salmon.density.scaled = x,
+         species = group) %>% 
+  mutate(log.salmon.density = 
+           log.salmon.density.scaled*sd(data$log.salmon.density)+
+           mean(data$log.salmon.density)) %>% 
+  #limit predictions to the observed values rather than extrapolating
+  filter((species == 'RUSP' & 
+            (log.salmon.density.scaled >= 
+               min(filter(data, species == 'RUSP')$log.salmon.density.scaled) & 
+               log.salmon.density.scaled <= 
+               max(filter(data, species == 'RUSP')$log.salmon.density.scaled))) |
+           (species == 'MADI' & 
+              (log.salmon.density.scaled >= 
+                 min(filter(data, species == 'MADI')$log.salmon.density.scaled) & 
+                 log.salmon.density.scaled <= 
+                 max(filter(data, species == 'MADI')$log.salmon.density.scaled))) |
+           (species == 'VASP' & 
+              (log.salmon.density.scaled >= 
+                 min(filter(data, species == 'VASP')$log.salmon.density.scaled) & 
+                 log.salmon.density.scaled <= 
+                 max(filter(data, species == 'VASP')$log.salmon.density.scaled))) |
+           (species == 'MEFE' & 
+              (log.salmon.density.scaled >= 
+                 min(filter(data, species == 'MEFE')$log.salmon.density.scaled) & 
+                 log.salmon.density.scaled <= 
+                 max(filter(data, species == 'MEFE')$log.salmon.density.scaled))) |
+           (species == 'TITR' & 
+              (log.salmon.density.scaled >= 
+                 min(filter(data, species == 'TITR')$log.salmon.density.scaled) & 
+                 log.salmon.density.scaled <= 
+                 max(filter(data, species == 'TITR')$log.salmon.density.scaled))))
+
+#create a custom colour palette
+pal <- pnw_palette("Cascades", 5)
+
+#plot the raw data with model predictions on top
+ggplot(data, aes(x = log.salmon.density, y = percent.green)) +
+  geom_point(aes(colour = species)) +
+  geom_ribbon(data = predict_green,
+              aes(y = predicted, ymin = conf.low, ymax = conf.high,
+                  fill = species), 
+              alpha = 0.2) +
+  geom_line(data = predict_green,
+            aes(y = predicted, colour = species)) +
+  scale_color_manual(values = pal, labels = c("False Lily","Salmonberry",
+                                              "False Azalea", "Blueberry",
+                                              "Foamflower"),
+                     name = "") +
+  scale_fill_manual(values = pal, labels = c("False Lily","Salmonberry",
+                                             "False Azalea", "Blueberry",
+                                             "Foamflower"),
+                    name = "") +
+  labs(x = "log(Salmon Density)", y = "% Green") +
+  theme_classic(30) +
+  facet_wrap(~species, scales = "fixed") +
+  theme(strip.text = element_blank(), axis.line = element_line(size = 0.25)) +
+  annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
+  annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
