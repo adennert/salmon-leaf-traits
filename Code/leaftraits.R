@@ -375,7 +375,8 @@ scale_fill_manual(values = pal, labels = c("False Lily","Salmonberry",
 labs(x = "log(Salmon Density)", y = expression(paste(delta^{15} ~ N))) +
 theme_classic(30) +
 facet_wrap(~species, scales = "fixed") +
-theme(strip.text = element_blank(), axis.line = element_line(size = 0.25)) +
+theme(strip.text = element_blank(), axis.line = element_line(size = 0.25),
+      legend.text = element_text(size=30)) +
 annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
 annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
 
@@ -436,7 +437,8 @@ ggplot(data, aes(x = log.salmon.density, y = percent.N)) +
   labs(x = "log(Salmon Density)", y = "% Nitrogen") +
   theme_classic(30) +
   facet_wrap(~species, scales = "fixed") +
-  theme(strip.text = element_blank(), axis.line = element_line(size = 0.25)) +
+  theme(strip.text = element_blank(), axis.line = element_line(size = 0.25),
+        legend.text = element_text(size=30)) +
   annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
   annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
 
@@ -498,7 +500,8 @@ ggplot(data, aes(x = log.salmon.density, y = punch.weight.mg)) +
   labs(x = "log(Salmon Density)", y = "Leaf Mass") +
   theme_classic(30) +
   facet_wrap(~species, scales = "fixed") +
-  theme(strip.text = element_blank(), axis.line = element_line(size = 0.25)) +
+  theme(strip.text = element_blank(), axis.line = element_line(size = 0.25),
+        legend.text = element_text(size=30)) +
   annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
   annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
 
@@ -560,7 +563,8 @@ ggplot(data, aes(x = log.salmon.density, y = leaf.area)) +
   labs(x = "log(Salmon Density)", y = "Leaf Area") +
   theme_classic(30) +
   facet_wrap(~species, scales = "free_y") +
-  theme(strip.text = element_blank(), axis.line = element_line(size = 1)) +
+  theme(strip.text = element_blank(), axis.line = element_line(size = 1),
+        legend.text = element_text(size=30)) +
   annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
   annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
 
@@ -622,7 +626,8 @@ ggplot(data, aes(x = log.salmon.density, y = percent.green)) +
   labs(x = "log(Salmon Density)", y = "Proportion Green") +
   theme_classic(30) +
   facet_wrap(~species, scales = "fixed") +
-  theme(strip.text = element_blank(), axis.line = element_line(size = 0.25)) +
+  theme(strip.text = element_blank(), axis.line = element_line(size = 0.25),
+        legend.text = element_text(size=30)) +
   annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
   annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
 
