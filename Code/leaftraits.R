@@ -78,7 +78,9 @@ data <- data %>% dplyr::filter(stream %in% c("Beales", "Bullock Main", "Clatse",
                                              "Fancy", "Fannie", "Farm Bay",
                                              "Goatbushu", "Hooknose", "Jane",
                                              "Kill", "Kunsoot", "Lee", "Quartcha",
-                                             "Sagar"))
+                                             "Sagar")) %>% 
+#remove 5th species that is not of interest and has limited data
+  filter(species != "TITR")
 
 ####01. NITROGEN ISOTOPE MODELLING####
 hist(data$n.15, breaks = 100) #use normal distribution
@@ -355,9 +357,8 @@ predict_n.15 <- ggpredict(isotope_mod, vcov.fun = "vcovHC", vcov.type = "HC0",
   pal <- pnw_palette("Cascades", 5)
   
 #plot the raw data with model predictions on top
-data_noTITR <- data %>% filter(species != "TITR") #remove species w/o data
   
-ggplot(data_noTITR, aes(x = log.salmon.density, y = n.15)) +
+ggplot(data, aes(x = log.salmon.density, y = n.15)) +
 geom_point(aes(colour = species)) +
 geom_ribbon(data = predict_n.15,
             aes(y = predicted, ymin = conf.low, ymax = conf.high,
@@ -371,12 +372,15 @@ scale_color_manual(values = pal, labels = c("False Lily","Salmonberry",
 scale_fill_manual(values = pal, labels = c("False Lily","Salmonberry",
                                            "False Azalea", "Blueberry"),
                   name = "") +
-labs(x = "log(Salmon Density)", y = expression(paste(~delta~Nitrogen-15))) +
+labs(x = "log(Salmon Density)", y = expression(paste(delta^{15} ~ N))) +
 theme_classic(30) +
 facet_wrap(~species, scales = "fixed") +
 theme(strip.text = element_blank(), axis.line = element_line(size = 0.25)) +
 annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
 annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
+
+ggsave("Figures/isotopes.png",  height=9, width=16)
+ggsave("Figures/isotopes.pdf",  height=9, width=16)
 
 #Percent Nitrogen Figure----
   
@@ -415,10 +419,7 @@ predict_percent <- ggpredict(percent_mod, vcov.fun = "vcovHC", vcov.type = "HC0"
 #create a custom colour palette
 pal <- pnw_palette("Cascades", 5)
 
-#plot the raw data with model predictions on top
-data_noTITR <- data %>% filter(species != "TITR") #remove species w/o data
-
-ggplot(data_noTITR, aes(x = log.salmon.density, y = percent.N)) +
+ggplot(data, aes(x = log.salmon.density, y = percent.N)) +
   geom_point(aes(colour = species)) +
   geom_ribbon(data = predict_percent,
               aes(y = predicted, ymin = conf.low, ymax = conf.high,
@@ -438,6 +439,9 @@ ggplot(data_noTITR, aes(x = log.salmon.density, y = percent.N)) +
   theme(strip.text = element_blank(), axis.line = element_line(size = 0.25)) +
   annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
   annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
+
+ggsave("Figures/percent_nitrogen.png",  height=9, width=16)
+ggsave("Figures/percent_nitrogen.pdf",  height=9, width=16)
 
 #Leaf Mass Figure----
 
@@ -471,12 +475,7 @@ predict_mass <- ggpredict(mass_mod, vcov.fun = "vcovHC", vcov.type = "HC0",
               (log.salmon.density.scaled >= 
                  min(filter(data, species == 'MEFE')$log.salmon.density.scaled) & 
                  log.salmon.density.scaled <= 
-                 max(filter(data, species == 'MEFE')$log.salmon.density.scaled))) |
-           (species == 'TITR' & 
-               (log.salmon.density.scaled >= 
-                  min(filter(data, species == 'TITR')$log.salmon.density.scaled) & 
-                  log.salmon.density.scaled <= 
-                  max(filter(data, species == 'TITR')$log.salmon.density.scaled))))
+                 max(filter(data, species == 'MEFE')$log.salmon.density.scaled))))
 
 #create a custom colour palette
 pal <- pnw_palette("Cascades", 5)
@@ -491,19 +490,20 @@ ggplot(data, aes(x = log.salmon.density, y = punch.weight.mg)) +
   geom_line(data = predict_mass,
             aes(y = predicted, colour = species)) +
   scale_color_manual(values = pal, labels = c("False Lily","Salmonberry",
-                                              "False Azalea", "Blueberry",
-                                              "Foamflower"),
+                                              "False Azalea", "Blueberry"),
                      name = "") +
   scale_fill_manual(values = pal, labels = c("False Lily","Salmonberry",
-                                             "False Azalea", "Blueberry",
-                                             "Foamflower"),
+                                             "False Azalea", "Blueberry"),
                     name = "") +
-  labs(x = "log(Salmon Density)", y = "Leaf Mass per Area") +
+  labs(x = "log(Salmon Density)", y = "Leaf Mass") +
   theme_classic(30) +
   facet_wrap(~species, scales = "fixed") +
   theme(strip.text = element_blank(), axis.line = element_line(size = 0.25)) +
   annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
   annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
+
+ggsave("Figures/leaf_mass.png",  height=9, width=16)
+ggsave("Figures/leaf_mass.pdf",  height=9, width=16)
 
 #Leaf Area Figure----
 
@@ -537,12 +537,7 @@ predict_area <- ggpredict(area_mod, vcov.fun = "vcovHC", vcov.type = "HC0",
               (log.salmon.density.scaled >= 
                  min(filter(data, species == 'MEFE')$log.salmon.density.scaled) & 
                  log.salmon.density.scaled <= 
-                 max(filter(data, species == 'MEFE')$log.salmon.density.scaled))) |
-           (species == 'TITR' & 
-              (log.salmon.density.scaled >= 
-                 min(filter(data, species == 'TITR')$log.salmon.density.scaled) & 
-                 log.salmon.density.scaled <= 
-                 max(filter(data, species == 'TITR')$log.salmon.density.scaled))))
+                 max(filter(data, species == 'MEFE')$log.salmon.density.scaled))))
 
 #create a custom colour palette
 pal <- pnw_palette("Cascades", 5)
@@ -557,12 +552,10 @@ ggplot(data, aes(x = log.salmon.density, y = leaf.area)) +
   geom_line(data = predict_area,
             aes(y = predicted, colour = species)) +
   scale_color_manual(values = pal, labels = c("False Lily","Salmonberry",
-                                              "False Azalea", "Blueberry",
-                                              "Foamflower"),
+                                              "False Azalea", "Blueberry"),
                      name = "") +
   scale_fill_manual(values = pal, labels = c("False Lily","Salmonberry",
-                                             "False Azalea", "Blueberry",
-                                             "Foamflower"),
+                                             "False Azalea", "Blueberry"),
                     name = "") +
   labs(x = "log(Salmon Density)", y = "Leaf Area") +
   theme_classic(30) +
@@ -570,6 +563,9 @@ ggplot(data, aes(x = log.salmon.density, y = leaf.area)) +
   theme(strip.text = element_blank(), axis.line = element_line(size = 1)) +
   annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
   annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
+
+ggsave("Figures/leaf_area.png",  height=9, width=16)
+ggsave("Figures/leaf_area.pdf",  height=9, width=16)
 
 #Leaf Greenness Figure----
 
@@ -603,12 +599,7 @@ predict_green <- ggpredict(green_mod, vcov.fun = "vcovHC", vcov.type = "HC0",
               (log.salmon.density.scaled >= 
                  min(filter(data, species == 'MEFE')$log.salmon.density.scaled) & 
                  log.salmon.density.scaled <= 
-                 max(filter(data, species == 'MEFE')$log.salmon.density.scaled))) |
-           (species == 'TITR' & 
-              (log.salmon.density.scaled >= 
-                 min(filter(data, species == 'TITR')$log.salmon.density.scaled) & 
-                 log.salmon.density.scaled <= 
-                 max(filter(data, species == 'TITR')$log.salmon.density.scaled))))
+                 max(filter(data, species == 'MEFE')$log.salmon.density.scaled))))
 
 #create a custom colour palette
 pal <- pnw_palette("Cascades", 5)
@@ -623,16 +614,17 @@ ggplot(data, aes(x = log.salmon.density, y = percent.green)) +
   geom_line(data = predict_green,
             aes(y = predicted, colour = species)) +
   scale_color_manual(values = pal, labels = c("False Lily","Salmonberry",
-                                              "False Azalea", "Blueberry",
-                                              "Foamflower"),
+                                              "False Azalea", "Blueberry"),
                      name = "") +
   scale_fill_manual(values = pal, labels = c("False Lily","Salmonberry",
-                                             "False Azalea", "Blueberry",
-                                             "Foamflower"),
+                                             "False Azalea", "Blueberry"),
                     name = "") +
-  labs(x = "log(Salmon Density)", y = "% Green") +
+  labs(x = "log(Salmon Density)", y = "Proportion Green") +
   theme_classic(30) +
   facet_wrap(~species, scales = "fixed") +
   theme(strip.text = element_blank(), axis.line = element_line(size = 0.25)) +
   annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
   annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
+
+ggsave("Figures/prop_green.png",  height=9, width=16)
+ggsave("Figures/prop_green.pdf",  height=9, width=16)
