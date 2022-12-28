@@ -83,20 +83,15 @@ data <- data %>% dplyr::filter(stream %in% c("Beales", "Bullock Main", "Clatse",
   filter(species != "TITR")
 
 ####01. NITROGEN ISOTOPE MODELLING####
-hist(data$n.15, breaks = 100) #use normal distribution
+hist(data$n.15, breaks = 100) #use normal distribution in lme4
 
-isotope_mod <- glmmTMB(n.15 ~ species * log.salmon.density.scaled +
+isotope_mod <- lme4::lmer(n.15 ~ species * log.salmon.density.scaled +
                          dist.upstream.scaled +
                          dist.from.stream.scaled + 
-                         #northness.scaled + 
-                         #eastness.scaled +
                          rel.soil.moisture.scaled + 
                          avg.canopy.cover.scaled +
                          slope.scaled
-                         + (1|stream/quadrat.id),
-                       dispformula = ~ log.salmon.density.scaled +
-                         dist.upstream.scaled,
-                       family = gaussian(),
+                       + (1|stream/quadrat.id),
                        data = data, na.action = "na.omit")
 
 #check variance inflation factors for collinearity among predictors
@@ -116,35 +111,48 @@ plotResiduals(res$scaledResiduals, data_na$dist.from.stream.scaled)
 plotResiduals(res$scaledResiduals, data_na$rel.soil.moisture.scaled)
 plotResiduals(res$scaledResiduals, data_na$avg.canopy.cover.scaled)
 plotResiduals(res$scaledResiduals, data_na$slope.scaled)
+#potential for heteroscedasiticy
 
 #Check for outliers
 testOutliers(simulationOutput = res) #limited number of outliers; 
 #likely due to sample size (F. Hartig, DHARMa vignette); will not remove any 
-#simply to improve fit
+#simply to improve fit; outlier test not significant
 
 #Check Dispersion
 testDispersion(res) # No over/underdispersion 
 
 #once model assumptions and fit have been checked, assess the model outputs
-summary(isotope_mod, robust = TRUE)
+summary(isotope_mod)
+
+#check for evidence of heteroscedasticity
+performance::check_heteroscedasticity(isotope_mod)
+#heteroscedasticity present
+
+#calculate heteroscedasticity-robust sandwich estimators of standard errors
+sand <- clubSandwich::vcovCR(isotope_mod, type = "CR2")
+clubSandwich::coef_test(isotope_mod, vcov = sand, test = "z")
+#From clubSandwich vignette: "CR2" is the "bias-reduced linearization" 
+#adjustment proposed by Bell and McCaffrey (2002) and further developed in 
+#Pustejovsky and Tipton (2017). The adjustment is chosen so that the
+#variance-covariance estimator is exactly unbiased under a user-specified 
+#working model
+
+#calculate the conditional R^2, which accounts for both fixed and random effects
 performance::r2(isotope_mod)
+#Conditional R^2 = 0.714
+
 
 ####02. %N MODELLING####
-hist(data$percent.N, breaks = 100) #use normal distribution
+hist(data$percent.N, breaks = 100) #use normal distribution in lme
 
-percent_mod <- glmmTMB(percent.N ~ species * log.salmon.density.scaled +
-                         dist.upstream.scaled +
-                         dist.from.stream.scaled + 
-                         #northness.scaled + 
-                         #eastness.scaled +
-                         rel.soil.moisture.scaled + 
-                         avg.canopy.cover.scaled +
-                         slope.scaled
-                       + (1|stream/quadrat.id),
-                        dispformula = ~ log.salmon.density.scaled +
-                         species + rel.soil.moisture.scaled + slope.scaled,
-                       family = gaussian(),
-                       data = data, na.action = "na.omit")
+percent_mod <- lme4::lmer(percent.N ~ species * log.salmon.density.scaled +
+                            dist.upstream.scaled +
+                            dist.from.stream.scaled + 
+                            rel.soil.moisture.scaled + 
+                            avg.canopy.cover.scaled +
+                            slope.scaled
+                          + (1|stream/quadrat.id),
+                          data = data, na.action = "na.omit")
 
 #check variance inflation factors for collinearity among predictors
 performance::check_collinearity(percent_mod)
@@ -163,27 +171,44 @@ plotResiduals(res$scaledResiduals, data_na$dist.from.stream.scaled)
 plotResiduals(res$scaledResiduals, data_na$rel.soil.moisture.scaled)
 plotResiduals(res$scaledResiduals, data_na$avg.canopy.cover.scaled)
 plotResiduals(res$scaledResiduals, data_na$slope.scaled)
+#potential for heteroscedasiticy
 
 #Check for outliers
 testOutliers(simulationOutput = res) #limited number of outliers; 
 #likely due to sample size (F. Hartig, DHARMa vignette); will not remove any 
-#simply to improve fit
+#simply to improve fit; outlier test not significant
 
 #Check Dispersion
 testDispersion(res) # No over/underdispersion 
 
 #once model assumptions and fit have been checked, assess the model outputs
-summary(percent_mod, robust = TRUE)
+summary(percent_mod)
+
+#check for evidence of heteroscedasticity
+performance::check_heteroscedasticity(percent_mod)
+#heteroscedasticity not present
+
+#will calculate conservative standard errors despite homoscedasticity;
+#calculate heteroscedasticity-robust sanwich estimators of standard errors
+sand <- clubSandwich::vcovCR(percent_mod, type = "CR2")
+clubSandwich::coef_test(percent_mod, vcov = sand, test = "z")
+#From clubSandwich vignette: "CR2" is the "bias-reduced linearization" 
+#adjustment proposed by Bell and McCaffrey (2002) and further developed in 
+#Pustejovsky and Tipton (2017). The adjustment is chosen so that the
+#variance-covariance estimator is exactly unbiased under a user-specified 
+#working model
+
+#calculate the conditional R^2, which accounts for both fixed and random effects
 performance::r2(percent_mod)
+#Conditional R^2 = 0.478
 
 ####03. LEAF MASS PER AREA MODELLING####
-hist(data$punch.weight.mg, breaks = 100) #use gamma distribution
+hist(data$punch.weight.mg, breaks = 100) #use gamma distribution in glmmTMB
 
+#must use glmmTMB has lme4 models won't converge
 mass_mod <- glmmTMB(punch.weight.mg ~ species * log.salmon.density.scaled +
                          dist.upstream.scaled +
                          dist.from.stream.scaled + 
-                         #northness.scaled + 
-                         #eastness.scaled +
                          rel.soil.moisture.scaled + 
                          avg.canopy.cover.scaled +
                          slope.scaled
@@ -210,21 +235,33 @@ plotResiduals(res$scaledResiduals, data_na$dist.from.stream.scaled)
 plotResiduals(res$scaledResiduals, data_na$rel.soil.moisture.scaled)
 plotResiduals(res$scaledResiduals, data_na$avg.canopy.cover.scaled)
 plotResiduals(res$scaledResiduals, data_na$slope.scaled)
+#potential for heteroscedasticity at only one predictor
 
 #Check for outliers
 testOutliers(simulationOutput = res) #limited number of outliers; 
 #likely due to sample size (F. Hartig, DHARMa vignette); will not remove any 
-#simply to improve fit
+#simply to improve fit; outlier test not significant
 
 #Check Dispersion
 testDispersion(res) # No over/underdispersion 
 
-#once model assumptions and fit have been checked, assess the model outputs
-summary(mass_mod, robust = TRUE)
+#once model assumptions and fit have been checked, assess the model outputs 
+summary(mass_mod)
+
+#check for evidence of heteroscedasticity
+performance::check_heteroscedasticity(mass_mod)
+#cannot check with this function on non-gaussian models
+
+#cannot calculate heteroscedasticity-robust sandwich estimators of standard errors
+#with glmmTMB; thus, interpretation of coefficients with confidence intervals
+#near zero must be conservative
+
+#calculate the conditional R^2, which accounts for both fixed and random effects
 performance::r2(mass_mod)
+#after removing model's dispersion parameters, conditional R^2 = 0.387
 
 ####04. LEAF AREA MODELLING####
-hist(data$leaf.area, breaks = 100) #use gamma distribution
+hist(data$leaf.area, breaks = 100) #use gamma distribution in glmmTMB
 
 area_mod <- glmmTMB(leaf.area ~ species * log.salmon.density.scaled +
                       dist.upstream.scaled +
@@ -236,7 +273,7 @@ area_mod <- glmmTMB(leaf.area ~ species * log.salmon.density.scaled +
                       slope.scaled
                     + (1|stream/quadrat.id),
                     dispformula = ~ log.salmon.density.scaled +
-                      species,
+                    species,
                     family = Gamma(link = "log"),
                     data = data, na.action = "na.omit")
 
@@ -257,35 +294,40 @@ plotResiduals(res$scaledResiduals, data_na$dist.from.stream.scaled)
 plotResiduals(res$scaledResiduals, data_na$rel.soil.moisture.scaled)
 plotResiduals(res$scaledResiduals, data_na$avg.canopy.cover.scaled)
 plotResiduals(res$scaledResiduals, data_na$slope.scaled)
+#potential for heteroscedasticity at only one predictor
 
 #Check for outliers
-testOutliers(simulationOutput = res) #limited number of outliers; 
-#likely due to sample size (F. Hartig, DHARMa vignette); will not remove any 
-#simply to improve fit
+testOutliers(simulationOutput = res) #no outliers
 
 #Check Dispersion
 testDispersion(res) # No over/underdispersion 
 
 #once model assumptions and fit have been checked, assess the model outputs
-summary(area_mod, robust = TRUE)
+summary(area_mod)
+
+#check for evidence of heteroscedasticity
+performance::check_heteroscedasticity(area_mod)
+#cannot check with this function on non-gaussian models
+
+#cannot calculate heteroscedasticity-robust sandwich estimators of standard errors
+#with glmmTMB; thus, interpretation of coefficients with confidence intervals
+#near zero must be conservative
+
+#calculate the conditional R^2, which accounts for both fixed and random effects
 performance::r2(area_mod)
+#after removing model's dispersion parameters, conditional R^2 = 0.695
 
 ####05. LEAF GREENNESS MODELLING####
-hist(data$percent.green, breaks = 100) #use normal distribution
+hist(data$percent.green, breaks = 100) #use normal distribution in lme4
 
-green_mod <- glmmTMB(percent.green ~ species * log.salmon.density.scaled +
-                      dist.upstream.scaled +
-                      dist.from.stream.scaled + 
-                      #northness.scaled + 
-                      #eastness.scaled +
-                      rel.soil.moisture.scaled + 
-                      avg.canopy.cover.scaled +
-                      slope.scaled
-                    + (1|stream/quadrat.id),
-                    dispformula = ~ log.salmon.density.scaled +
-                      species,
-                    family = gaussian,
-                    data = data, na.action = "na.omit")
+green_mod <- lme4::lmer(percent.green ~ species * log.salmon.density.scaled +
+                       dist.upstream.scaled +
+                       dist.from.stream.scaled + 
+                       rel.soil.moisture.scaled + 
+                       avg.canopy.cover.scaled +
+                       slope.scaled
+                     + (1|stream/quadrat.id),
+                     data = data, na.action = "na.omit")
 
 #check variance inflation factors for collinearity among predictors
 performance::check_collinearity(green_mod)
@@ -304,25 +346,40 @@ plotResiduals(res$scaledResiduals, data_na$dist.from.stream.scaled)
 plotResiduals(res$scaledResiduals, data_na$rel.soil.moisture.scaled)
 plotResiduals(res$scaledResiduals, data_na$avg.canopy.cover.scaled)
 plotResiduals(res$scaledResiduals, data_na$slope.scaled)
+#potential for heteroscedasticity
 
 #Check for outliers
-testOutliers(simulationOutput = res) #limited number of outliers; 
-#likely due to sample size (F. Hartig, DHARMa vignette); will not remove any 
-#simply to improve fit
+testOutliers(simulationOutput = res) #no outliers present
 
 #Check Dispersion
 testDispersion(res) # No over/underdispersion 
 
 #once model assumptions and fit have been checked, assess the model outputs
-summary(green_mod, robust = TRUE)
+summary(green_mod)
+
+#check for evidence of heteroscedasticity
+performance::check_heteroscedasticity(green_mod)
+
+#heteroscedasticity present
+#calculate heteroscedasticity-robust sandwich estimators of standard errors
+sand <- clubSandwich::vcovCR(green_mod, type = "CR2")
+clubSandwich::coef_test(green_mod, vcov = sand, test = "z")
+#From clubSandwich vignette: "CR2" is the "bias-reduced linearization" 
+#adjustment proposed by Bell and McCaffrey (2002) and further developed in 
+#Pustejovsky and Tipton (2017). The adjustment is chosen so that the
+#variance-covariance estimator is exactly unbiased under a user-specified 
+#working model
+
+#calculate the conditional R^2, which account for both fixed and random effects
 performance::r2(green_mod)
+#conditional R^2 = 0.595
 
 ####06. FIGURES####
 
 #Nitrogen-15 Figure----
 
 #create model predictions using heteroscedasticity-consistent standard errors
-predict_n.15 <- ggpredict(isotope_mod, vcov.fun = "vcovHC", vcov.type = "HC0",
+predict_n.15 <- ggpredict(isotope_mod, vcov.fun = "vcovHC", vcov.type = "CR2",
                           terms = c("log.salmon.density.scaled[n=100]",
                                               "species")) %>% 
   #rename columns to column names in original data
@@ -386,7 +443,7 @@ ggsave("Figures/isotopes.pdf",  height=9, width=16)
 #Percent Nitrogen Figure----
   
 #create model predictions using heteroscedasticity-consistent standard errors
-predict_percent <- ggpredict(percent_mod, vcov.fun = "vcovHC", vcov.type = "HC0",
+predict_percent <- ggpredict(percent_mod, vcov.fun = "vcovHC", vcov.type = "CR2",
                              terms = c("log.salmon.density.scaled[n=100]",
                                                    "species")) %>% 
   #rename columns to column names in original data
@@ -448,7 +505,7 @@ ggsave("Figures/percent_nitrogen.pdf",  height=9, width=16)
 #Leaf Mass Figure----
 
 #create model predictions using heteroscedasticity consistent standard errors
-predict_mass <- ggpredict(mass_mod, vcov.fun = "vcovHC", vcov.type = "HC0",
+predict_mass <- ggpredict(mass_mod, vcov.fun = "vcovHC", vcov.type = "CR2",
                              terms = c("log.salmon.density.scaled[n=100]",
                                        "species")) %>% 
   #rename columns to column names in original data
@@ -511,7 +568,7 @@ ggsave("Figures/leaf_mass.pdf",  height=9, width=16)
 #Leaf Area Figure----
 
 #create model predictions using heteroscedasticity consistent standard errors
-predict_area <- ggpredict(area_mod, vcov.fun = "vcovHC", vcov.type = "HC0",
+predict_area <- ggpredict(area_mod, vcov.fun = "vcovHC", vcov.type = "CR2",
                              terms = c("log.salmon.density.scaled[n=100]",
                                        "species")) %>% 
   #rename columns to column names in original data
@@ -574,7 +631,7 @@ ggsave("Figures/leaf_area.pdf",  height=9, width=16)
 #Leaf Greenness Figure----
 
 #create model predictions using heteroscedasticity consistent standard errors
-predict_green <- ggpredict(green_mod, vcov.fun = "vcovHC", vcov.type = "HC0",
+predict_green <- ggpredict(green_mod, vcov.fun = "vcovHC", vcov.type = "CR2",
                              terms = c("log.salmon.density.scaled[n=100]",
                                        "species")) %>% 
   #rename columns to column names in original data
