@@ -141,6 +141,7 @@ clubSandwich::coef_test(isotope_mod, vcov = sand, test = "z")
 performance::r2(isotope_mod)
 #Conditional R^2 = 0.714
 
+#calculate species-level relationships between salmon and response
 emmeans::emtrends(isotope_mod, ~species, 
                   var = "log.salmon.density.scaled")
 emmeans::emmip(isotope_mod, species ~ log.salmon.density.scaled, cov.reduce = range)
@@ -205,6 +206,7 @@ clubSandwich::coef_test(percent_mod, vcov = sand, test = "z")
 performance::r2(percent_mod)
 #Conditional R^2 = 0.478
 
+#calculate species-level relationships between salmon and response
 emmeans::emtrends(percent_mod, ~species, 
                   var = "log.salmon.density.scaled")
 emmeans::emmip(percent_mod, species ~ log.salmon.density.scaled, cov.reduce = range)
@@ -267,6 +269,7 @@ performance::check_heteroscedasticity(mass_mod)
 performance::r2(mass_mod)
 #after removing model's dispersion parameters, conditional R^2 = 0.387
 
+#calculate species-level relationships between salmon and response
 emmeans::emtrends(mass_mod, ~species, 
                   var = "log.salmon.density.scaled")
 emmeans::emmip(mass_mod, species ~ log.salmon.density.scaled, cov.reduce = range)
@@ -328,6 +331,7 @@ performance::check_heteroscedasticity(area_mod)
 performance::r2(area_mod)
 #after removing model's dispersion parameters, conditional R^2 = 0.695
 
+#calculate species-level relationships between salmon and response
 emmeans::emtrends(area_mod, ~species, 
                   var = "log.salmon.density.scaled")
 emmeans::emmip(area_mod, species ~ log.salmon.density.scaled, cov.reduce = range)
@@ -389,6 +393,7 @@ clubSandwich::coef_test(green_mod, vcov = sand, test = "z")
 performance::r2(green_mod)
 #conditional R^2 = 0.595
 
+#calculate species-level relationships between salmon and response
 emmeans::emtrends(green_mod, ~species, 
                   var = "log.salmon.density.scaled")
 emmeans::emmip(green_mod, species ~ log.salmon.density.scaled, cov.reduce = range)
