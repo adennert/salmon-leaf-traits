@@ -141,6 +141,9 @@ clubSandwich::coef_test(isotope_mod, vcov = sand, test = "z")
 performance::r2(isotope_mod)
 #Conditional R^2 = 0.714
 
+emmeans::emtrends(isotope_mod, ~species, 
+                  var = "log.salmon.density.scaled")
+emmeans::emmip(isotope_mod, species ~ log.salmon.density.scaled, cov.reduce = range)
 
 ####02. %N MODELLING####
 hist(data$percent.N, breaks = 100) #use normal distribution in lme
@@ -202,6 +205,10 @@ clubSandwich::coef_test(percent_mod, vcov = sand, test = "z")
 performance::r2(percent_mod)
 #Conditional R^2 = 0.478
 
+emmeans::emtrends(percent_mod, ~species, 
+                  var = "log.salmon.density.scaled")
+emmeans::emmip(percent_mod, species ~ log.salmon.density.scaled, cov.reduce = range)
+
 ####03. LEAF MASS PER AREA MODELLING####
 hist(data$punch.weight.mg, breaks = 100) #use gamma distribution in glmmTMB
 
@@ -260,6 +267,10 @@ performance::check_heteroscedasticity(mass_mod)
 performance::r2(mass_mod)
 #after removing model's dispersion parameters, conditional R^2 = 0.387
 
+emmeans::emtrends(mass_mod, ~species, 
+                  var = "log.salmon.density.scaled")
+emmeans::emmip(mass_mod, species ~ log.salmon.density.scaled, cov.reduce = range)
+
 ####04. LEAF AREA MODELLING####
 hist(data$leaf.area, breaks = 100) #use gamma distribution in glmmTMB
 
@@ -317,6 +328,10 @@ performance::check_heteroscedasticity(area_mod)
 performance::r2(area_mod)
 #after removing model's dispersion parameters, conditional R^2 = 0.695
 
+emmeans::emtrends(area_mod, ~species, 
+                  var = "log.salmon.density.scaled")
+emmeans::emmip(area_mod, species ~ log.salmon.density.scaled, cov.reduce = range)
+
 ####05. LEAF GREENNESS MODELLING####
 hist(data$percent.green, breaks = 100) #use normal distribution in lme4
 
@@ -373,6 +388,10 @@ clubSandwich::coef_test(green_mod, vcov = sand, test = "z")
 #calculate the conditional R^2, which account for both fixed and random effects
 performance::r2(green_mod)
 #conditional R^2 = 0.595
+
+emmeans::emtrends(green_mod, ~species, 
+                  var = "log.salmon.density.scaled")
+emmeans::emmip(green_mod, species ~ log.salmon.density.scaled, cov.reduce = range)
 
 ####06. FIGURES####
 
