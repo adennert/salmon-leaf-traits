@@ -724,3 +724,71 @@ ggplot(data, aes(x = log.salmon.density, y = percent.green)) +
 
 ggsave("Figures/prop_green.png",  height=9, width=16)
 ggsave("Figures/prop_green.pdf",  height=9, width=16)
+
+
+#Canopy Cover Figure----
+
+#create model predictions using heteroscedasticity consistent standard errors
+predict_percent_canopy <- ggpredict(percent_mod, vcov.fun = "vcovHC", vcov.type = "CR2",
+                           terms = c("avg.canopy.cover.scaled[n=100]")) %>% 
+#rename columns to column names in original data
+  rename(avg.canopy.cover.scaled = x) %>% 
+  mutate(avg.canopy.cover = 
+           avg.canopy.cover.scaled*sd(data$avg.canopy.cover)+
+           mean(data$avg.canopy.cover)) 
+  
+
+  
+#create a custom colour palette
+pal <- pnw_palette("Cascades", 5)
+
+#plot the raw data with model predictions on top
+a <- ggplot(data, aes(x = avg.canopy.cover, y = percent.N), colour = "dark green") +
+  geom_point(alpha = 0.2, colour = "dark green") +
+  geom_ribbon(data = predict_percent_canopy,
+              aes(y = predicted, ymin = conf.low, ymax = conf.high), 
+              alpha = 0.2, fill = "dark green") +
+  geom_line(data = predict_percent_canopy,
+            aes(y = predicted), colour = "dark green") +
+  labs(x = "% Canopy Cover", y = "% Nitrogen") +
+  theme_classic(30) +
+  theme(strip.text = element_blank(), axis.line = element_line(size = 0.25),
+        legend.text = element_text(size=30)) +
+  annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
+  annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
+
+a
+
+#create model predictions using heteroscedasticity consistent standard errors
+predict_mass_canopy <- ggpredict(mass_mod, vcov.fun = "vcovHC", vcov.type = "CR2",
+                                 terms = c("avg.canopy.cover.scaled[n=100]")) %>% 
+  #rename columns to column names in original data
+  rename(avg.canopy.cover.scaled = x) %>% 
+  mutate(avg.canopy.cover = 
+           avg.canopy.cover.scaled*sd(data$avg.canopy.cover)+
+           mean(data$avg.canopy.cover))
+
+b <- ggplot(data, aes(x = avg.canopy.cover, y = punch.weight.mg)) +
+  geom_point(alpha = 0.2, colour = "dark green") +
+  geom_ribbon(data = predict_mass_canopy,
+              aes(y = predicted, ymin = conf.low, ymax = conf.high), 
+              alpha = 0.2, fill = "dark green") +
+  geom_line(data = predict_mass_canopy,
+            aes(y = predicted), colour = "dark green") +
+  labs(x = "% Canopy Cover", y = "Leaf Mass per Area") +
+  theme_classic(30) +
+  theme(strip.text = element_blank(), axis.line = element_line(size = 0.25),
+        legend.text = element_text(size=30)) +
+  annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
+  annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
+
+b
+
+library(patchwork)
+a + b
+
+ggsave("Figures/canopy_cover.png",  height=9, width=16)
+ggsave("Figures/canopy_cover.pdf",  height=9, width=16)
+
+
+
