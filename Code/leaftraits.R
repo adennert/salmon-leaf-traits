@@ -665,91 +665,6 @@ ggplot(data, aes(x = log.salmon.density, y = punch.weight.mg), colour = "dark gr
 ggsave("Figures/leaf_mass_nolegend.png",  height=9, width=9)
 ggsave("Figures/leaf_mass_nolegend.pdf",  height=9, width=9)
 
-#Leaf Area Figure----
-
-#create model predictions using heteroscedasticity consistent standard errors
-predict_area <- ggpredict(area_mod, vcov.fun = "vcovHC", vcov.type = "CR2",
-                             terms = c("log.salmon.density.scaled[n=100]",
-                                       "species")) %>% 
-  #rename columns to column names in original data
-  rename(log.salmon.density.scaled = x,
-         species = group) %>% 
-  mutate(log.salmon.density = 
-           log.salmon.density.scaled*sd(data$log.salmon.density)+
-           mean(data$log.salmon.density)) %>% 
-  #limit predictions to the observed values rather than extrapolating
-  filter((species == 'RUSP' & 
-            (log.salmon.density.scaled >= 
-               min(filter(data, species == 'RUSP')$log.salmon.density.scaled) & 
-               log.salmon.density.scaled <= 
-               max(filter(data, species == 'RUSP')$log.salmon.density.scaled))) |
-           (species == 'MADI' & 
-              (log.salmon.density.scaled >= 
-                 min(filter(data, species == 'MADI')$log.salmon.density.scaled) & 
-                 log.salmon.density.scaled <= 
-                 max(filter(data, species == 'MADI')$log.salmon.density.scaled))) |
-           (species == 'VASP' & 
-              (log.salmon.density.scaled >= 
-                 min(filter(data, species == 'VASP')$log.salmon.density.scaled) & 
-                 log.salmon.density.scaled <= 
-                 max(filter(data, species == 'VASP')$log.salmon.density.scaled))) |
-           (species == 'MEFE' & 
-              (log.salmon.density.scaled >= 
-                 min(filter(data, species == 'MEFE')$log.salmon.density.scaled) & 
-                 log.salmon.density.scaled <= 
-                 max(filter(data, species == 'MEFE')$log.salmon.density.scaled))))
-
-#create a custom colour palette
-pal <- pnw_palette("Cascades", 5)
-
-#plot the raw data with model predictions on top
-ggplot(data, aes(x = log.salmon.density, y = leaf.area)) +
-  geom_point(aes(colour = species)) +
-  geom_ribbon(data = predict_area,
-              aes(y = predicted, ymin = conf.low, ymax = conf.high,
-                  fill = species), 
-              alpha = 0.2) +
-  geom_line(data = predict_area,
-            aes(y = predicted, colour = species)) +
-  scale_color_manual(values = pal, labels = c("False Lily","Salmonberry",
-                                              "False Azalea", "Blueberry"),
-                     name = "") +
-  scale_fill_manual(values = pal, labels = c("False Lily","Salmonberry",
-                                             "False Azalea", "Blueberry"),
-                    name = "") +
-  labs(x = "log(Salmon Density)", y = "Leaf Area") +
-  theme_classic(30) +
-  facet_wrap(~species, scales = "free_y") +
-  theme(strip.text = element_blank(), axis.line = element_line(size = 1),
-        legend.text = element_text(size=30)) +
-  annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
-  annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
-
-ggsave("Figures/leaf_area.png",  height=9, width=16)
-ggsave("Figures/leaf_area.pdf",  height=9, width=16)
-
-#plot a version with a single colour and without the legend
-
-ggplot(data, aes(x = log.salmon.density, y = leaf.area), colour = "dark green") +
-  geom_point(colour = "dark green", alpha = 0.5, shape = 16, size = 2) +
-  geom_ribbon(data = predict_area,
-              aes(y = predicted, ymin = conf.low, ymax = conf.high),
-              fill = "dark green", 
-              alpha = 0.2) +
-  geom_line(data = predict_area,
-            aes(y = predicted), colour = "dark green") +
-  labs(x = "log(Salmon Density)", y = "Leaf Area") +
-  theme_classic(30) +
-  facet_wrap(~species, scales = "free_y") +
-  theme(strip.text = element_blank(), axis.line = element_line(size = 0.25),
-        legend.text = element_text(size=30)) +
-  annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
-  annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
-
-ggsave("Figures/leaf_area_nolegend.png",  height=9, width=9)
-ggsave("Figures/leaf_area_nolegend.pdf",  height=9, width=9)
-
-
 #Leaf Greenness Figure----
 
 #create model predictions using heteroscedasticity consistent standard errors
@@ -833,6 +748,91 @@ ggplot(data, aes(x = log.salmon.density, y = percent.green), colour = "dark gree
 
 ggsave("Figures/prop_green_nolegend.png",  height=9, width=9)
 ggsave("Figures/prop_green_nolegend.pdf",  height=9, width=9)
+
+#Leaf Area Figure----
+
+#create model predictions using heteroscedasticity consistent standard errors
+predict_area <- ggpredict(area_mod, vcov.fun = "vcovHC", vcov.type = "CR2",
+                          terms = c("log.salmon.density.scaled[n=100]",
+                                    "species")) %>% 
+  #rename columns to column names in original data
+  rename(log.salmon.density.scaled = x,
+         species = group) %>% 
+  mutate(log.salmon.density = 
+           log.salmon.density.scaled*sd(data$log.salmon.density)+
+           mean(data$log.salmon.density)) %>% 
+  #limit predictions to the observed values rather than extrapolating
+  filter((species == 'RUSP' & 
+            (log.salmon.density.scaled >= 
+               min(filter(data, species == 'RUSP')$log.salmon.density.scaled) & 
+               log.salmon.density.scaled <= 
+               max(filter(data, species == 'RUSP')$log.salmon.density.scaled))) |
+           (species == 'MADI' & 
+              (log.salmon.density.scaled >= 
+                 min(filter(data, species == 'MADI')$log.salmon.density.scaled) & 
+                 log.salmon.density.scaled <= 
+                 max(filter(data, species == 'MADI')$log.salmon.density.scaled))) |
+           (species == 'VASP' & 
+              (log.salmon.density.scaled >= 
+                 min(filter(data, species == 'VASP')$log.salmon.density.scaled) & 
+                 log.salmon.density.scaled <= 
+                 max(filter(data, species == 'VASP')$log.salmon.density.scaled))) |
+           (species == 'MEFE' & 
+              (log.salmon.density.scaled >= 
+                 min(filter(data, species == 'MEFE')$log.salmon.density.scaled) & 
+                 log.salmon.density.scaled <= 
+                 max(filter(data, species == 'MEFE')$log.salmon.density.scaled))))
+
+#create a custom colour palette
+pal <- pnw_palette("Cascades", 5)
+
+#plot the raw data with model predictions on top
+ggplot(data, aes(x = log.salmon.density, y = leaf.area)) +
+  geom_point(aes(colour = species)) +
+  geom_ribbon(data = predict_area,
+              aes(y = predicted, ymin = conf.low, ymax = conf.high,
+                  fill = species), 
+              alpha = 0.2) +
+  geom_line(data = predict_area,
+            aes(y = predicted, colour = species)) +
+  scale_color_manual(values = pal, labels = c("False Lily","Salmonberry",
+                                              "False Azalea", "Blueberry"),
+                     name = "") +
+  scale_fill_manual(values = pal, labels = c("False Lily","Salmonberry",
+                                             "False Azalea", "Blueberry"),
+                    name = "") +
+  labs(x = "log(Salmon Density)", y = "Leaf Area") +
+  theme_classic(30) +
+  facet_wrap(~species, scales = "free_y") +
+  theme(strip.text = element_blank(), axis.line = element_line(size = 1),
+        legend.text = element_text(size=30)) +
+  annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
+  annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
+
+ggsave("Figures/leaf_area.png",  height=9, width=16)
+ggsave("Figures/leaf_area.pdf",  height=9, width=16)
+
+#plot a version with a single colour and without the legend
+
+ggplot(data, aes(x = log.salmon.density, y = leaf.area), colour = "dark green") +
+  geom_point(colour = "dark green", alpha = 0.5, shape = 16, size = 2) +
+  geom_ribbon(data = predict_area,
+              aes(y = predicted, ymin = conf.low, ymax = conf.high),
+              fill = "dark green", 
+              alpha = 0.2) +
+  geom_line(data = predict_area,
+            aes(y = predicted), colour = "dark green") +
+  labs(x = "log(Salmon Density)", y = "Leaf Area") +
+  theme_classic(30) +
+  facet_wrap(~species, scales = "free_y") +
+  theme(strip.text = element_blank(), axis.line = element_line(size = 0.25),
+        legend.text = element_text(size=30)) +
+  annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
+  annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
+
+ggsave("Figures/leaf_area_nolegend.png",  height=9, width=9)
+ggsave("Figures/leaf_area_nolegend.pdf",  height=9, width=9)
+
 
 #Canopy Cover Figure----
 
