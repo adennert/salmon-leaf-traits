@@ -82,6 +82,8 @@ data <- data %>% dplyr::filter(stream %in% c("Beales", "Bullock Main", "Clatse",
 #remove 5th species that is not of interest and has limited data
   filter(species != "TITR")
 
+plyr::count(data, "species")
+
 ####01. NITROGEN ISOTOPE MODELLING####
 hist(data$n.15, breaks = 100) #use normal distribution in lme4
 
@@ -730,17 +732,17 @@ ggsave("Figures/prop_green.pdf",  height=9, width=16)
 
 #create model predictions using heteroscedasticity consistent standard errors
 predict_percent_canopy <- ggpredict(percent_mod, vcov.fun = "vcovHC", vcov.type = "CR2",
-                           terms = c("avg.canopy.cover.scaled[n=100]")) %>% 
-#rename columns to column names in original data
+                           terms = c("avg.canopy.cover.scaled[n=1000]")) %>% 
+  #rename columns to column names in original data
   rename(avg.canopy.cover.scaled = x) %>% 
   mutate(avg.canopy.cover = 
            avg.canopy.cover.scaled*sd(data$avg.canopy.cover)+
-           mean(data$avg.canopy.cover)) 
-  
-
-  
-#create a custom colour palette
-pal <- pnw_palette("Cascades", 5)
+           mean(data$avg.canopy.cover)) %>% 
+  #limit predictions to the observed values rather than extrapolating
+  filter(((avg.canopy.cover.scaled >= 
+               min(data$avg.canopy.cover.scaled) & 
+               avg.canopy.cover.scaled <= 
+               max(data$avg.canopy.cover.scaled))))
 
 #plot the raw data with model predictions on top
 a <- ggplot(data, aes(x = avg.canopy.cover, y = percent.N), colour = "dark green") +
@@ -754,6 +756,7 @@ a <- ggplot(data, aes(x = avg.canopy.cover, y = percent.N), colour = "dark green
   theme_classic(30) +
   theme(strip.text = element_blank(), axis.line = element_line(size = 0.25),
         legend.text = element_text(size=30)) +
+  #xlim(60,100) + #use this argument to constrain the axes & remove outiers
   annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
   annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
 
@@ -761,12 +764,17 @@ a
 
 #create model predictions using heteroscedasticity consistent standard errors
 predict_mass_canopy <- ggpredict(mass_mod, vcov.fun = "vcovHC", vcov.type = "CR2",
-                                 terms = c("avg.canopy.cover.scaled[n=100]")) %>% 
+                                 terms = c("avg.canopy.cover.scaled[n=1000]")) %>% 
   #rename columns to column names in original data
   rename(avg.canopy.cover.scaled = x) %>% 
   mutate(avg.canopy.cover = 
            avg.canopy.cover.scaled*sd(data$avg.canopy.cover)+
-           mean(data$avg.canopy.cover))
+           mean(data$avg.canopy.cover)) %>% 
+  #limit predictions to the observed values rather than extrapolating
+  filter(((avg.canopy.cover.scaled >= 
+             min(data$avg.canopy.cover.scaled) & 
+             avg.canopy.cover.scaled <= 
+             max(data$avg.canopy.cover.scaled))))
 
 b <- ggplot(data, aes(x = avg.canopy.cover, y = punch.weight.mg)) +
   geom_point(alpha = 0.2, colour = "dark green") +
@@ -779,7 +787,8 @@ b <- ggplot(data, aes(x = avg.canopy.cover, y = punch.weight.mg)) +
   theme_classic(30) +
   theme(strip.text = element_blank(), axis.line = element_line(size = 0.25),
         legend.text = element_text(size=30)) +
-  annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
+  #xlim(60,100) + #use this argument to constrain the axes & remove outiers
+  annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2) +
   annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
 
 b
