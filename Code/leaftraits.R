@@ -282,71 +282,7 @@ emmeans::emtrends(mass_mod, ~species,
 emmeans::emmip(mass_mod, species ~ log.salmon.density.scaled, 
                cov.reduce = range, CIs = TRUE)
 
-####04. LEAF AREA MODELLING####
-hist(data$leaf.area, breaks = 100) #use gamma distribution in glmmTMB
-
-area_mod <- glmmTMB(leaf.area ~ species * log.salmon.density.scaled +
-                      dist.upstream.scaled +
-                      dist.from.stream.scaled + 
-                      #northness.scaled + 
-                      #eastness.scaled +
-                      rel.soil.moisture.scaled + 
-                      avg.canopy.cover.scaled +
-                      slope.scaled
-                    + (1|stream/quadrat.id),
-                    dispformula = ~ log.salmon.density.scaled +
-                    species,
-                    family = Gamma(link = "log"),
-                    data = data, na.action = "na.omit")
-
-#check variance inflation factors for collinearity among predictors
-performance::check_collinearity(area_mod)
-
-#check residuals and test model assumptions using the DHARMa package
-res <- simulateResiduals(area_mod, n = 1000)
-plot(res)
-
-#Check Individual Predictors
-data_na <- data %>% tidyr::drop_na(leaf.area) 
-data_na$species <- as.character(data_na$species)
-plotResiduals(res$scaledResiduals, data_na$log.salmon.density.scaled)
-plotResiduals(res$scaledResiduals, data_na$species)
-plotResiduals(res$scaledResiduals, data_na$dist.upstream.scaled)
-plotResiduals(res$scaledResiduals, data_na$dist.from.stream.scaled)
-plotResiduals(res$scaledResiduals, data_na$rel.soil.moisture.scaled)
-plotResiduals(res$scaledResiduals, data_na$avg.canopy.cover.scaled)
-plotResiduals(res$scaledResiduals, data_na$slope.scaled)
-#potential for heteroscedasticity at only one predictor
-
-#Check for outliers
-testOutliers(simulationOutput = res) #no outliers
-
-#Check Dispersion
-testDispersion(res) # No over/underdispersion 
-
-#once model assumptions and fit have been checked, assess the model outputs
-summary(area_mod)
-
-#check for evidence of heteroscedasticity
-performance::check_heteroscedasticity(area_mod)
-#cannot check with this function on non-gaussian models
-
-#cannot calculate heteroscedasticity-robust sandwich estimators of standard errors
-#with glmmTMB; thus, interpretation of coefficients with confidence intervals
-#near zero must be conservative
-
-#calculate the conditional R^2, which accounts for both fixed and random effects
-performance::r2(area_mod)
-#after removing model's dispersion parameters, conditional R^2 = 0.695
-
-#calculate species-level relationships between salmon and response variable
-#emmeans package calculates species-level estimated marginal means
-emmeans::emtrends(area_mod, ~species, 
-                  var = "log.salmon.density.scaled")
-emmeans::emmip(area_mod, species ~ log.salmon.density.scaled, 
-               cov.reduce = range, CIs = TRUE)
-
-####05. LEAF GREENNESS MODELLING####
+####04. LEAF GREENNESS MODELLING####
 hist(data$percent.green, breaks = 100) #use normal distribution in lme4
 
 green_mod <- lme4::lmer(percent.green ~ species * log.salmon.density.scaled +
@@ -408,6 +344,70 @@ performance::r2(green_mod)
 emmeans::emtrends(green_mod, ~species, 
                   var = "log.salmon.density.scaled")
 emmeans::emmip(green_mod, species ~ log.salmon.density.scaled, 
+               cov.reduce = range, CIs = TRUE)
+
+####05. LEAF AREA MODELLING####
+hist(data$leaf.area, breaks = 100) #use gamma distribution in glmmTMB
+
+area_mod <- glmmTMB(leaf.area ~ species * log.salmon.density.scaled +
+                      dist.upstream.scaled +
+                      dist.from.stream.scaled + 
+                      #northness.scaled + 
+                      #eastness.scaled +
+                      rel.soil.moisture.scaled + 
+                      avg.canopy.cover.scaled +
+                      slope.scaled
+                    + (1|stream/quadrat.id),
+                    dispformula = ~ log.salmon.density.scaled +
+                      species,
+                    family = Gamma(link = "log"),
+                    data = data, na.action = "na.omit")
+
+#check variance inflation factors for collinearity among predictors
+performance::check_collinearity(area_mod)
+
+#check residuals and test model assumptions using the DHARMa package
+res <- simulateResiduals(area_mod, n = 1000)
+plot(res)
+
+#Check Individual Predictors
+data_na <- data %>% tidyr::drop_na(leaf.area) 
+data_na$species <- as.character(data_na$species)
+plotResiduals(res$scaledResiduals, data_na$log.salmon.density.scaled)
+plotResiduals(res$scaledResiduals, data_na$species)
+plotResiduals(res$scaledResiduals, data_na$dist.upstream.scaled)
+plotResiduals(res$scaledResiduals, data_na$dist.from.stream.scaled)
+plotResiduals(res$scaledResiduals, data_na$rel.soil.moisture.scaled)
+plotResiduals(res$scaledResiduals, data_na$avg.canopy.cover.scaled)
+plotResiduals(res$scaledResiduals, data_na$slope.scaled)
+#potential for heteroscedasticity at only one predictor
+
+#Check for outliers
+testOutliers(simulationOutput = res) #no outliers
+
+#Check Dispersion
+testDispersion(res) # No over/underdispersion 
+
+#once model assumptions and fit have been checked, assess the model outputs
+summary(area_mod)
+
+#check for evidence of heteroscedasticity
+performance::check_heteroscedasticity(area_mod)
+#cannot check with this function on non-gaussian models
+
+#cannot calculate heteroscedasticity-robust sandwich estimators of standard errors
+#with glmmTMB; thus, interpretation of coefficients with confidence intervals
+#near zero must be conservative
+
+#calculate the conditional R^2, which accounts for both fixed and random effects
+performance::r2(area_mod)
+#after removing model's dispersion parameters, conditional R^2 = 0.695
+
+#calculate species-level relationships between salmon and response variable
+#emmeans package calculates species-level estimated marginal means
+emmeans::emtrends(area_mod, ~species, 
+                  var = "log.salmon.density.scaled")
+emmeans::emmip(area_mod, species ~ log.salmon.density.scaled, 
                cov.reduce = range, CIs = TRUE)
 
 ####06. FIGURES####
@@ -476,6 +476,28 @@ annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
 ggsave("Figures/isotopes.png",  height=9, width=16)
 ggsave("Figures/isotopes.pdf",  height=9, width=16)
 
+
+#plot a version with a single colour and without the legend
+
+ggplot(data, aes(x = log.salmon.density, y = n.15), colour = "dark green") +
+  geom_point(colour = "dark green", alpha = 0.5, shape = 16, size = 2) +
+  geom_ribbon(data = predict_n.15,
+              aes(y = predicted, ymin = conf.low, ymax = conf.high),
+                  fill = "dark green", 
+              alpha = 0.2) +
+  geom_line(data = predict_n.15,
+            aes(y = predicted), colour = "dark green") +
+  labs(x = "log(Salmon Density)", y = expression(paste(delta^{15} ~ N))) +
+  theme_classic(30) +
+  facet_wrap(~species, scales = "fixed") +
+  theme(strip.text = element_blank(), axis.line = element_line(size = 0.25),
+        legend.text = element_text(size=30)) +
+  annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
+  annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
+
+ggsave("Figures/isotopes_nolegend.png",  height=9, width=9)
+ggsave("Figures/isotopes_nolegend.pdf",  height=9, width=9)
+
 #Percent Nitrogen Figure----
   
 #create model predictions using heteroscedasticity-consistent standard errors
@@ -537,6 +559,27 @@ ggplot(data, aes(x = log.salmon.density, y = percent.N)) +
 
 ggsave("Figures/percent_nitrogen.png",  height=9, width=16)
 ggsave("Figures/percent_nitrogen.pdf",  height=9, width=16)
+
+#plot a version with a single colour and without the legend
+
+ggplot(data, aes(x = log.salmon.density, y = percent.N), colour = "dark green") +
+  geom_point(colour = "dark green", alpha = 0.5, shape = 16, size = 2) +
+  geom_ribbon(data = predict_percent,
+              aes(y = predicted, ymin = conf.low, ymax = conf.high),
+              fill = "dark green", 
+              alpha = 0.2) +
+  geom_line(data = predict_percent,
+            aes(y = predicted), colour = "dark green") +
+  labs(x = "log(Salmon Density)", y = "% Nitrogen") +
+  theme_classic(30) +
+  facet_wrap(~species, scales = "fixed") +
+  theme(strip.text = element_blank(), axis.line = element_line(size = 0.25),
+        legend.text = element_text(size=30)) +
+  annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
+  annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
+
+ggsave("Figures/percent_nitrogen_nolegend.png",  height=9, width=9)
+ggsave("Figures/percent_nitrogen_nolegend.pdf",  height=9, width=9)
 
 #Leaf Mass Figure----
 
@@ -601,6 +644,27 @@ ggplot(data, aes(x = log.salmon.density, y = punch.weight.mg)) +
 ggsave("Figures/leaf_mass.png",  height=9, width=16)
 ggsave("Figures/leaf_mass.pdf",  height=9, width=16)
 
+#plot a version with a single colour and without the legend
+
+ggplot(data, aes(x = log.salmon.density, y = punch.weight.mg), colour = "dark green") +
+  geom_point(colour = "dark green", alpha = 0.5, shape = 16, size = 2) +
+  geom_ribbon(data = predict_mass,
+              aes(y = predicted, ymin = conf.low, ymax = conf.high),
+              fill = "dark green", 
+              alpha = 0.2) +
+  geom_line(data = predict_mass,
+            aes(y = predicted), colour = "dark green") +
+  labs(x = "log(Salmon Density)", y = "Leaf Mass Per Area") +
+  theme_classic(30) +
+  facet_wrap(~species, scales = "fixed") +
+  theme(strip.text = element_blank(), axis.line = element_line(size = 0.25),
+        legend.text = element_text(size=30)) +
+  annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
+  annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
+
+ggsave("Figures/leaf_mass_nolegend.png",  height=9, width=9)
+ggsave("Figures/leaf_mass_nolegend.pdf",  height=9, width=9)
+
 #Leaf Area Figure----
 
 #create model predictions using heteroscedasticity consistent standard errors
@@ -663,6 +727,28 @@ ggplot(data, aes(x = log.salmon.density, y = leaf.area)) +
 
 ggsave("Figures/leaf_area.png",  height=9, width=16)
 ggsave("Figures/leaf_area.pdf",  height=9, width=16)
+
+#plot a version with a single colour and without the legend
+
+ggplot(data, aes(x = log.salmon.density, y = leaf.area), colour = "dark green") +
+  geom_point(colour = "dark green", alpha = 0.5, shape = 16, size = 2) +
+  geom_ribbon(data = predict_area,
+              aes(y = predicted, ymin = conf.low, ymax = conf.high),
+              fill = "dark green", 
+              alpha = 0.2) +
+  geom_line(data = predict_area,
+            aes(y = predicted), colour = "dark green") +
+  labs(x = "log(Salmon Density)", y = "Leaf Area") +
+  theme_classic(30) +
+  facet_wrap(~species, scales = "free_y") +
+  theme(strip.text = element_blank(), axis.line = element_line(size = 0.25),
+        legend.text = element_text(size=30)) +
+  annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
+  annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
+
+ggsave("Figures/leaf_area_nolegend.png",  height=9, width=9)
+ggsave("Figures/leaf_area_nolegend.pdf",  height=9, width=9)
+
 
 #Leaf Greenness Figure----
 
@@ -727,6 +813,26 @@ ggplot(data, aes(x = log.salmon.density, y = percent.green)) +
 ggsave("Figures/prop_green.png",  height=9, width=16)
 ggsave("Figures/prop_green.pdf",  height=9, width=16)
 
+#plot a version with a single colour and without the legend
+
+ggplot(data, aes(x = log.salmon.density, y = percent.green), colour = "dark green") +
+  geom_point(colour = "dark green", alpha = 0.5, shape = 16, size = 2) +
+  geom_ribbon(data = predict_green,
+              aes(y = predicted, ymin = conf.low, ymax = conf.high),
+              fill = "dark green", 
+              alpha = 0.2) +
+  geom_line(data = predict_green,
+            aes(y = predicted), colour = "dark green") +
+  labs(x = "log(Salmon Density)", y = "Proportion Green") +
+  theme_classic(30) +
+  facet_wrap(~species, scales = "fixed") +
+  theme(strip.text = element_blank(), axis.line = element_line(size = 0.25),
+        legend.text = element_text(size=30)) +
+  annotate("segment", x = -Inf, xend = Inf, y = -Inf, yend = -Inf, size = 2)+
+  annotate("segment", x = -Inf, xend = -Inf, y = -Inf, yend = Inf, size = 2)
+
+ggsave("Figures/prop_green_nolegend.png",  height=9, width=9)
+ggsave("Figures/prop_green_nolegend.pdf",  height=9, width=9)
 
 #Canopy Cover Figure----
 
@@ -798,6 +904,3 @@ a + b
 
 ggsave("Figures/canopy_cover.png",  height=9, width=16)
 ggsave("Figures/canopy_cover.pdf",  height=9, width=16)
-
-
-
